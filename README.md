@@ -1,0 +1,1 @@
+# hadock-diamond-store
