@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+  <title>NOVA Topup Store</title>
+  <style>
+    :root{--accent:#007bff;--muted:#6c757d}
+    *{box-sizing:border-box}
+    body{font-family:Arial, Helvetica, sans-serif;background:#f2f5f9;margin:0;padding:20px}
+    .hidden{display:none}
+
+    /* Login */
+    .login-container {
+      background: rgba(0,0,0,0.75);
+      color: #fff;
+      padding: 30px;
+      border-radius: 10px;
+      width: 300px;
+      margin: 50px auto;
+      text-align: center;
+      box-shadow: 0 0 12px rgba(0,0,0,0.4);
+    }
+    .login-container h1 {margin-bottom: 20px;font-size: 24px}
+    .login-container input, .login-container button {
+      width: 100%;padding: 10px;margin: 8px 0;
+      border-radius: 6px;border: none;font-size:15px
+    }
+    .login-container input{color:#000}
+    .login-container button{background:var(--accent);color:#fff;cursor:pointer}
+    .login-container button:hover{background:#0056b3}
+    .switch{margin-top:12px;font-size:13px;color:#ccc}
+    .switch button{background:none;color:#fff;border:1px solid #888;margin-top:6px;cursor:pointer;padding:6px 10px;border-radius:6px}
+
+    /* Topup UI */
+    .container{max-width:980px;margin:0 auto}
+    header{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}
+    h1{font-size:20px;margin:0}
+    .card{background:#fff;border-radius:10px;padding:14px;box-shadow:0 6px 18px rgba(15,20,30,0.06)}
+    .row{display:flex;gap:12px;align-items:center}
+    input[type=text], input[type=number], input[type=email]{padding:10px;border-radius:8px;border:1px solid #e6e9ef;width:100%}
+    .btn{background:var(--accent);color:#fff;padding:10px 12px;border:0;border-radius:8px;cursor:pointer}
+    .btn.ghost{background:transparent;color:var(--accent);border:1px solid rgba(0,0,0,0.06)}
+    .small{font-size:13px;color:var(--muted)}
+    .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:12px}
+    .pkg{background:#fff;border-radius:8px;padding:12px;border:1px solid #f0f2f6;text-align:center}
+    .pkg img{width:80px;height:60px;object-fit:contain}
+    .pkg h4{margin:8px 0 4px;font-size:15px}
+    .pkg .price{color:var(--accent);font-weight:700}
+    .qty{display:flex;align-items:center;justify-content:center;gap:8px;margin-top:8px}
+    .qty button{width:28px;height:28px;border-radius:6px;border:1px solid #ddd;background:#fff;cursor:pointer}
+    aside.orderBox{margin-top:14px}
+    .sticky{position:sticky;top:14px}
+    .totalRow{display:flex;justify-content:space-between;align-items:center;margin-top:10px;padding:8px;border-radius:8px;border:1px dashed #ececec;background:#fafafa}
+    .order-actions{display:flex;gap:8px;margin-top:12px}
+    .modal-backdrop{position:fixed;inset:0;background:rgba(8,10,12,0.45);display:none;align-items:center;justify-content:center;padding:20px}
+    .modal{max-width:600px;width:100%}
+    .preview{max-height:280px;object-fit:contain;border-radius:8px;border:1px dashed #ddd;padding:6px;background:#fff}
+    @media(max-width:900px){ .grid{grid-template-columns:repeat(2,1fr)} .row{flex-direction:column;align-items:stretch} }
+    @media(max-width:600px){ .grid{grid-template-columns:1fr} .sticky{position:static} }
+  </style>
+</head>
+<body>
+
+  <!-- LOGIN SECTION -->
+  <div id="loginPage" class="login-container">
+    <h1 id="formTitle">Login</h1>
+    <form id="authForm">
+      <input type="text" id="username" placeholder="Username" required />
+      <input type="password" id="password" placeholder="Password" required />
+      <input type="email" id="emailField" placeholder="Email" style="display:none" />
+      <button type="submit">Submit</button>
+    </form>
+    <div class="switch">
+      <span id="switchText">Don't have an account?</span><br>
+      <button id="switchBtn">Create Account</button>
+    </div>
+  </div>
+
+  <!-- TOPUP APP SECTION -->
+  <div id="mainPage" class="hidden">
+    <div class="container">
+      <header>
+        <h1>NOVA — FreeFire Top-up (Demo)</h1>
+        <div class="small">Demo — local only</div>
+      </header>
+
+      <!-- Player ID -->
+      <div class="card">
+        <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+          <div style="flex:1">
+            <label class="small">Enter your Free Fire Player ID</label>
+            <input type="text" id="playerId" placeholder="Enter your Player ID" />
+          </div>
+          <div style="width:140px">
+            <label class="small" style="visibility:hidden">verify</label>
+            <button id="btnVerify" class="btn" style="width:100%">VERIFY</button>
+          </div>
+          <div style="min-width:220px">
+            <div class="small">Game:</div>
+            <div id="gameName" style="font-weight:700">—</div>
+            <div id="playerName" class="small" style="color:var(--muted)"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Packages + Order -->
+      <div style="display:grid;grid-template-columns:1fr 360px;gap:12px;margin-top:12px">
+        <div>
+          <div class="card">
+            <h3 style="margin:0 0 8px">Step 2: Select Diamond Packages</h3>
+            <div class="small">Click + / - to choose quantity</div>
+            <div id="pkgGrid" class="grid" style="margin-top:12px"></div>
+          </div>
+
+          <div class="card" style="margin-top:12px">
+            <h3 style="margin:0 0 8px">Order History</h3>
+            <div id="orders" class="small">No orders yet.</div>
+          </div>
+        </div>
+
+        <aside class="sticky">
+          <div class="card orderBox">
+            <h4 style="margin:0 0 6px">Step 3: Your Order</h4>
+            <div id="summaryArea">
+              <div class="small">Selected items will appear here.</div>
+            </div>
+            <div class="totalRow" style="margin-top:10px">
+              <div class="small">Total:</div>
+              <div id="totalAmount" style="font-weight:700">0 LKR</div>
+            </div>
+            <div style="margin-top:10px">
+              <label class="small">WhatsApp Number</label>
+              <input type="text" id="waNumber" placeholder="9477xxxxxxx (no +)" value="94775402129" />
+            </div>
+            <div class="order-actions">
+              <button id="orderReqBtn" class="btn" style="flex:1">Order Request</button>
+              <button id="clearBtn" class="btn ghost" style="flex:0">Clear</button>
+            </div>
+            <p class="small" style="margin-top:10px;color:var(--muted)">After uploading receipt the system will open WhatsApp with a prefilled message.</p>
+          </div>
+        </aside>
+      </div>
+
+      <footer style="margin-top:14px;text-align:center" class="small">Demo only — for production connect to backend.</footer>
+    </div>
+
+    <!-- Upload Modal -->
+    <div id="uploadModal" class="modal-backdrop">
+      <div class="modal">
+        <div class="card">
+          <h3 style="margin-top:0">Upload Receipt</h3>
+          <div id="orderSummary" class="small" style="margin-bottom:8px"></div>
+          <input id="receiptInput" type="file" accept="image/*" />
+          <div style="margin-top:8px">
+            <img id="previewImg" class="preview" style="display:none;width:100%" />
+          </div>
+          <div style="display:flex;gap:8px;margin-top:12px;justify-content:flex-end">
+            <button id="cancelUpload" class="btn ghost">Cancel</button>
+            <button id="sendWhatsapp" class="btn">Send to WhatsApp</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- LOGIN SCRIPT -->
+  <script>
+    const form = document.getElementById('authForm');
+    const switchBtn = document.getElementById('switchBtn');
+    const formTitle = document.getElementById('formTitle');
+    const emailField = document.getElementById('emailField');
+    const switchText = document.getElementById('switchText');
+
+    let mode = 'login';
+    switchBtn.addEventListener('click',()=>{
+      if(mode==='login'){ mode='register';formTitle.textContent='Create Account';emailField.style.display='block';switchBtn.textContent='Back to Login';switchText.textContent='Already have an account?';}
+      else { mode='login';formTitle.textContent='Login';emailField.style.display='none';switchBtn.textContent='Create Account';switchText.textContent="Don't have an account?"; }
+    });
+
+    form.addEventListener('submit',e=>{
+      e.preventDefault();
+      if(mode==='login'){
+        alert("Login Success ✅");
+        document.getElementById('loginPage').classList.add('hidden');
+        document.getElementById('mainPage').classList.remove('hidden');
+      } else {
+        alert("Account Created ✅ (demo)");
+        mode='login';formTitle.textContent='Login';emailField.style.display='none';switchBtn.textContent='Create Account';switchText.textContent="Don't have an account?";
+      }
+    });
+  </script>
+
+  <!-- FREEFIRE SCRIPT -->
+  <script>
+    const WHATSAPP_NUMBER_DEFAULT = '94775402129'; 
+    const GAME_TITLE = 'Free Fire';
+    const packages = [
+      { id: 'w_lite', title: 'Weekly Lite Membership', price: 120 },
+      { id: 'weekly', title: 'Weekly Membership', price: 460 },
+      { id: 'monthly', title: 'Monthly Membership', price: 2300 },
+      { id: 'd100', title: '100 Diamonds', price: 270 },
+      { id: 'd310', title: '310 Diamonds', price: 820 },
+      { id: 'd520', title: '520 Diamonds', price: 1360 }
+    ];
+    let cart = {}; let currentPlayer=null; let currentOrder=null; let receiptDataUrl=null;
+
+    const pkgGrid=document.getElementById('pkgGrid');
+    const summaryArea=document.getElementById('summaryArea');
+    const totalAmount=document.getElementById('totalAmount');
+    const waNumberEl=document.getElementById('waNumber');
+    const orderReqBtn=document.getElementById('orderReqBtn');
+    const clearBtn=document.getElementById('clearBtn');
+    const ordersEl=document.getElementById('orders');
+    const playerIdInput=document.getElementById('playerId');
+    const btnVerify=document.getElementById('btnVerify');
+    const gameNameEl=document.getElementById('gameName');
+    const playerNameEl=document.getElementById('playerName');
+    const uploadModal=document.getElementById('uploadModal');
+    const receiptInput=document.getElementById('receiptInput');
+    const previewImg=document.getElementById('previewImg');
+    const orderSummary=document.getElementById('orderSummary');
+    const cancelUpload=document.getElementById('cancelUpload');
+    const sendWhatsapp=document.getElementById('sendWhatsapp');
+
+    function renderPackages(){pkgGrid.innerHTML='';packages.forEach(p=>{const el=document.createElement('div');el.className='pkg';el.innerHTML=`<img src="https://via.placeholder.com/120x80?text=Item" alt="${p.title}" /><h4>${p.title}</h4><div class="price">${p.price} LKR</div><div class="qty"><button data-id="${p.id}" data-action="dec">−</button><input type="number" min="0" value="0" data-id="${p.id}" style="width:58px;text-align:center" /><button data-id="${p.id}" data-action="inc">+</button></div>`;pkgGrid.appendChild(el);});pkgGrid.querySelectorAll('button[data-action]').forEach(b=>b.addEventListener('click',qtyButton));pkgGrid.querySelectorAll('input[type=number]').forEach(inp=>inp.addEventListener('change',qtyInputChanged));}
+    function qtyButton(e){const id=e.currentTarget.dataset.id;const action=e.currentTarget.dataset.action;const input=pkgGrid.querySelector(`input[data-id="${id}"]`);let val=parseInt(input.value)||0;if(action==='inc')val++;else val=Math.max(0,val-1);input.value=val;updateCart(id,val);}
+    function qtyInputChanged(e){const id=e.currentTarget.dataset.id;let val=parseInt(e.currentTarget.value)||0;if(val<0)val=0;e.currentTarget.value=val;updateCart(id,val);}
+    function updateCart(id,qty){if(qty<=0)delete cart[id];else cart[id]=qty;renderSummary();}
+    function renderSummary(){const keys=Object.keys(cart);if(keys.length===0){summaryArea.innerHTML='<div class="small">No package selected.</div>';totalAmount.textContent='0 LKR';return;}let html='';let total=0;keys.forEach(id=>{const p=packages.find(x=>x.id===id);const qty=cart[id];const subtotal=p.price*qty;total+=subtotal;html+=`<div style="display:flex;justify-content:space-between"><div><strong>${p.title}</strong><div class="small">x ${qty}</div></div><div>${subtotal} LKR</div></div>`;});summaryArea.innerHTML=html;totalAmount.textContent=`${total} LKR`;}
+    btnVerify.addEventListener('click',()=>{const id=playerIdInput.value.trim();if(!id){alert('Enter Player ID');return;}gameNameEl.textContent=GAME_TITLE;playerNameEl.textContent=`User_${id.slice(-4)}`;currentPlayer={id,game:GAME_TITLE,name:`User_${id.slice(-4)}`};alert('Player verified (demo).');});
+    orderReqBtn.addEventListener('click',()=>{if(!currentPlayer){alert('Verify Player ID first');return;}const keys=Object.keys(cart);if(keys.length===0){alert('Select at least one package');return;}const orderId='ORD'+Date.now();const items=keys.map(id=>{const p=packages.find(x=>x.id===id);return{id:p.id,title:p.title,qty:cart[id],price:p.price};});const total=items.reduce((s,it)=>s+it.qty*it.price,0);currentOrder={id:orderId,player:currentPlayer,items,total};orderSummary.textContent=`OrderID: ${orderId} • Total: ${total} LKR`;receiptInput.value='';previewImg.style.display='none';receiptDataUrl=null;uploadModal.style.display='flex';});
+    clearBtn.addEventListener('click',()=>{if(!confirm('Clear selection?'))return;cart={};pkgGrid.querySelectorAll('input[type=number]').forEach(inp=>inp.value=0);renderSummary();});
+    uploadModal.addEventListener('click',(ev)=>{if(ev.target===uploadModal)uploadModal.style.display='none';});
+    cancelUpload.addEventListener('click',()=>{uploadModal.style.display='none';});
+    receiptInput.addEventListener('change',async(e)=>{const f=e.target.files[0];if(!f)return;if(!f.type.startsWith('image/')){alert('Upload an image');return;}const r=new FileReader();r.onload=()=>{previewImg.src=r.result;previewImg.style.display='block';receiptDataUrl=r.result;};r.readAsDataURL(f);});
+    sendWhatsapp.addEventListener('click',()=>{const wa=(waNumberEl.value||WHATSAPP_NUMBER_DEFAULT).replace(/[^0-9]/g,'');if(!wa){alert('Enter WhatsApp number');return;}const saved=JSON.parse(localStorage.getItem('ff_orders')||'[]');saved.unshift({...currentOrder,receipt:receiptDataUrl,wa});localStorage.setItem('ff_orders',JSON.stringify(saved));renderOrders();let msg=`Order Request%0AOrderID:${currentOrder.id}%0APlayerID:${currentOrder.player.id}%0A`;currentOrder.items.forEach(it=>{msg+=`- ${it.title} x${it.qty} = ${it.qty*it.price} L
