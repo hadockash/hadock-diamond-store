@@ -1,1 +1,278 @@
+<!doctype html>
+<html lang="si">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>FreeFire Top-up — Demo</title>
+  <style>
+    :root{
+      --bg:#f4f6fb; --card:#fff; --accent:#1473e6; --muted:#6b7280;
+      --shadow: 0 6px 18px rgba(16,24,40,0.08);
+      font-family: Inter, system-ui, Arial, sans-serif;
+    }
+    body{margin:0;background:var(--bg);color:#111;}
+    .wrap{max-width:980px;margin:18px auto;padding:16px;}
+    header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+    h1{font-size:18px;margin:0}
+    .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+    @media(max-width:880px){.grid{grid-template-columns:repeat(2,1fr)}}
+    @media(max-width:560px){.grid{grid-template-columns:1fr}}
+    .card{background:var(--card);padding:12px;border-radius:12px;box-shadow:var(--shadow);border:1px solid rgba(0,0,0,0.03);cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:8px;transition:transform .12s, box-shadow .12s}
+    .card.selected{border:2px solid var(--accent);transform:translateY(-6px)}
+    .card img{width:100%;height:90px;object-fit:contain;border-radius:8px;background:linear-gradient(#fff,#f0f4ff)}
+    .title{font-weight:600;font-size:14px;text-align:center}
+    .price{color:var(--accent);font-weight:700;margin-top:6px}
+    .qty{display:flex;align-items:center;gap:8px;margin-top:6px}
+    .qty button{width:34px;height:34px;border-radius:8px;border:1px solid #e6e9ef;background:#fff;cursor:pointer}
+    .qty input{width:56px;height:34px;border-radius:8px;border:1px solid #e6e9ef;text-align:center}
+    .bottom-bar{position:fixed;left:50%;transform:translateX(-50%);bottom:18px;background:var(--card);padding:12px 16px;border-radius:12px;box-shadow:var(--shadow);display:flex;gap:12px;align-items:center;min-width:320px}
+    .btn{background:var(--accent);color:#fff;padding:10px 14px;border-radius:10px;border:none;cursor:pointer;font-weight:600}
+    .btn.secondary{background:#fff;color:var(--accent);border:1px solid rgba(20,115,230,0.12)}
+    .order-panel{margin-top:18px;background:var(--card);padding:14px;border-radius:12px;box-shadow:var(--shadow)}
+    .hidden{display:none}
+    .preview{max-width:180px;max-height:180px;object-fit:contain;border-radius:8px;border:1px solid #eee}
+    .muted{color:var(--muted);font-size:13px}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <h1>Step 2: Select Diamond Packages</h1>
+      <div class="muted">WhatsApp: +94767436762</div>
+    </header>
 
+    <div id="grid" class="grid"></div>
+
+    <div id="orderSection" class="order-panel hidden">
+      <h2 style="margin:0 0 8px 0">Request Order</h2>
+      <div id="orderSummary" class="muted">No items yet.</div>
+
+      <div style="margin-top:12px;">
+        <label class="muted">Upload Your Receipt (image/pdf)</label><br/>
+        <input id="receiptInput" type="file" accept="image/*,application/pdf" />
+        <div id="receiptPreviewWrap" style="margin-top:10px;display:flex;gap:10px;align-items:center"></div>
+
+        <div style="margin-top:10px;display:flex;gap:8px;align-items:center">
+          <button id="downloadBtn" class="btn secondary hidden">Download Receipt</button>
+          <button id="sendWhatsappBtn" class="btn hidden">Open WhatsApp (Send order)</button>
+        </div>
+
+        <p class="muted" style="margin-top:10px;font-size:13px">
+          Hinweis: රිසිට් browser එකෙන් WhatsApp වෙත auto-attach කරන්න බ්‍රවුසර හෝ WhatsApp API අවසර නැත. 
+          "Open WhatsApp" බට්න් එක ඔබේ WhatsApp chat විවෘත කරන අතර orders details prefilled වේ — ඒ වටින receipt image අපිට manually attach කරන්න.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <div id="bottomBar" class="bottom-bar hidden">
+    <div id="totalText" style="font-weight:700">Total: 0 LKR</div>
+    <button id="requestBtn" class="btn">Request Order</button>
+  </div>
+
+<script>
+/* --- CONFIG --- */
+const PHONE = '94767436762'; // WhatsApp number, no '+' (international format)
+const products = [
+  {id:1, title:'Weekly Lite Membership', price:120.00, img:'images/weekly-lite.png'},
+  {id:2, title:'Weekly Membership', price:460.00, img:'images/weekly.png'},
+  {id:3, title:'Monthly Membership', price:2300.00, img:'images/monthly.png'},
+  {id:4, title:'3DAY EVO Access', price:165.00, img:'images/3day.png'},
+  {id:5, title:'7DAY EVO Access', price:250.00, img:'images/7day.png'},
+  {id:6, title:'30DAY EVO Access', price:750.00, img:'images/30day.png'},
+  {id:7, title:'25 Diamonds', price:70.00, img:'images/25.png'},
+  {id:8, title:'100 Diamonds', price:270.00, img:'images/100.png'},
+  {id:9, title:'310 Diamonds', price:820.00, img:'images/310.png'},
+  {id:10, title:'520 Diamonds', price:1360.00, img:'images/520.png'},
+  {id:11, title:'1,060 Diamonds', price:2680.00, img:'images/1060.png'},
+  {id:12, title:'2,180 Diamonds', price:5400.00, img:'images/2180.png'},
+  {id:13, title:'5,600 Diamonds', price:13400.00, img:'images/5600.png'},
+  {id:14, title:'11,500 Diamonds', price:27550.00, img:'images/11500.png'}
+];
+
+/* --- STATE --- */
+const state = {};
+products.forEach(p => state[p.id] = {qty:0, selected:false});
+
+/* --- RENDER GRID --- */
+const grid = document.getElementById('grid');
+products.forEach(p=>{
+  const card = document.createElement('div');
+  card.className='card';
+  card.dataset.id=p.id;
+
+  // image (use placeholder if missing)
+  const img = document.createElement('img');
+  img.src = p.img;
+  img.onerror = ()=>{ img.src='https://via.placeholder.com/240x120?text=Product' };
+  card.appendChild(img);
+
+  const title = document.createElement('div');
+  title.className='title'; title.textContent = p.title;
+  card.appendChild(title);
+
+  const price = document.createElement('div');
+  price.className='price'; price.textContent = p.price.toFixed(2) + ' LKR';
+  card.appendChild(price);
+
+  const qtyWrap = document.createElement('div');
+  qtyWrap.className='qty';
+  const minus = document.createElement('button'); minus.textContent='−';
+  const input = document.createElement('input'); input.type='number'; input.min=0; input.value=0;
+  const plus = document.createElement('button'); plus.textContent='+';
+
+  qtyWrap.appendChild(minus); qtyWrap.appendChild(input); qtyWrap.appendChild(plus);
+  card.appendChild(qtyWrap);
+
+  // click toggle selection when card clicked (but ignore clicks on qty controls)
+  card.addEventListener('click', (e)=>{
+    if (e.target === minus || e.target === plus || e.target === input) return;
+    toggleSelect(p.id, !state[p.id].selected);
+  });
+
+  // plus/minus handlers
+  plus.addEventListener('click', (e)=>{
+    e.stopPropagation();
+    input.value = Number(input.value) + 1;
+    updateQty(p.id, Number(input.value));
+  });
+  minus.addEventListener('click', (e)=>{
+    e.stopPropagation();
+    input.value = Math.max(0, Number(input.value)-1);
+    updateQty(p.id, Number(input.value));
+  });
+  input.addEventListener('change', (e)=>{
+    let v = Number(e.target.value) || 0;
+    if (v<0) v=0; e.target.value=v;
+    updateQty(p.id, v);
+  });
+
+  grid.appendChild(card);
+});
+
+/* --- UI helpers --- */
+const bottomBar = document.getElementById('bottomBar');
+const totalText = document.getElementById('totalText');
+const requestBtn = document.getElementById('requestBtn');
+const orderSection = document.getElementById('orderSection');
+const orderSummary = document.getElementById('orderSummary');
+const receiptInput = document.getElementById('receiptInput');
+const receiptPreviewWrap = document.getElementById('receiptPreviewWrap');
+const downloadBtn = document.getElementById('downloadBtn');
+const sendWhatsappBtn = document.getElementById('sendWhatsappBtn');
+
+function toggleSelect(id, flag){
+  state[id].selected = flag;
+  // reflect visual
+  const card = document.querySelector('.card[data-id="'+id+'"]');
+  if(flag) card.classList.add('selected'); else card.classList.remove('selected');
+  // if selected but qty is 0, set qty to 1
+  if(flag && state[id].qty===0){
+    state[id].qty = 1;
+    card.querySelector('input').value = 1;
+  }
+  refreshTotal();
+}
+
+function updateQty(id, qty){
+  state[id].qty = qty;
+  state[id].selected = qty>0;
+  const card = document.querySelector('.card[data-id="'+id+'"]');
+  if(state[id].selected) card.classList.add('selected'); else card.classList.remove('selected');
+  refreshTotal();
+}
+
+function refreshTotal(){
+  let total = 0;
+  let any = false;
+  const lines = [];
+  products.forEach(p=>{
+    const s = state[p.id];
+    if(s.qty>0){
+      any = true;
+      total += s.qty * p.price;
+      lines.push({title:p.title, qty:s.qty, price:p.price, sub: s.qty*p.price});
+    }
+  });
+  totalText.textContent = 'Total: ' + total.toFixed(2) + ' LKR';
+  if(any){
+    bottomBar.classList.remove('hidden');
+  } else {
+    bottomBar.classList.add('hidden');
+  }
+  // prepare order summary text
+  if(lines.length===0) orderSummary.textContent='No items yet.';
+  else {
+    orderSummary.innerHTML = lines.map(l=>`${l.qty} × ${l.title} — ${l.sub.toFixed(2)} LKR`).join('<br>') +
+      `<hr style="margin:8px 0;border:none;border-top:1px solid #eee"><strong>Total: ${total.toFixed(2)} LKR</strong>`;
+  }
+}
+
+/* --- Request Order button handler --- */
+requestBtn.addEventListener('click', ()=>{
+  orderSection.classList.remove('hidden');
+  // scroll into view
+  orderSection.scrollIntoView({behavior:'smooth', block:'center'});
+});
+
+/* --- Receipt upload handling --- */
+let uploadedFile = null;
+receiptInput.addEventListener('change', (e)=>{
+  const f = e.target.files[0];
+  uploadedFile = f || null;
+  receiptPreviewWrap.innerHTML = '';
+  downloadBtn.classList.add('hidden');
+  sendWhatsappBtn.classList.add('hidden');
+
+  if(!f) return;
+  // show preview (image or pdf icon)
+  if(f.type.startsWith('image/')){
+    const img = document.createElement('img'); img.className='preview';
+    img.src = URL.createObjectURL(f);
+    receiptPreviewWrap.appendChild(img);
+  } else {
+    const box = document.createElement('div'); box.textContent = f.name; box.className='muted';
+    receiptPreviewWrap.appendChild(box);
+  }
+  downloadBtn.classList.remove('hidden');
+  sendWhatsappBtn.classList.remove('hidden');
+
+  // prepare download link
+  downloadBtn.onclick = ()=>{
+    const url = URL.createObjectURL(f);
+    const a = document.createElement('a');
+    a.href = url; a.download = f.name || 'receipt';
+    document.body.appendChild(a); a.click(); a.remove();
+    URL.revokeObjectURL(url);
+  }
+
+});
+
+/* --- WhatsApp sending (open wa.me with prefilled text) --- */
+sendWhatsappBtn.addEventListener('click', ()=>{
+  // build order text
+  let total = 0;
+  const lines = [];
+  products.forEach(p=>{
+    const s = state[p.id];
+    if(s.qty>0){
+      lines.push(`${s.qty}× ${p.title} = ${(s.qty*p.price).toFixed(2)} LKR`);
+      total += s.qty*p.price;
+    }
+  });
+  let text = `FreeFire Top-up Order%0A`;
+  text += lines.map(ln => encodeURIComponent(ln)).join('%0A') + '%0A';
+  text += encodeURIComponent(`Total: ${total.toFixed(2)} LKR`) + '%0A%0A';
+  text += encodeURIComponent('Please find my receipt attached separately. (I will attach it in the chat)') + '%0A';
+  text += encodeURIComponent('Player ID / Note: __________________');
+
+  // open WhatsApp (mobile or web)
+  const url = `https://wa.me/${PHONE}?text=${text}`;
+  window.open(url, '_blank');
+});
+
+/* --- initial render --- */
+refreshTotal();
+</script>
+</body>
+  </html>
