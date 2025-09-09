@@ -1,1 +1,154 @@
+<!doctype html>
+<html lang="si">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>WhatsApp Multi-Link Builder (Manual Send)</title>
+  <style>
+    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial; background:#f7f8fb; margin:0; padding:22px;}
+    .wrap{max-width:880px;margin:0 auto;background:white;padding:20px;border-radius:12px;box-shadow:0 10px 30px rgba(12,20,40,.06);}
+    h1{font-size:1.2rem;margin:0 0 12px}
+    label{display:block;margin-top:12px;font-size:.95rem}
+    textarea, input{width:100%;padding:10px;border:1px solid #e2e6ef;border-radius:10px;font-size:1rem}
+    .hint{font-size:.85rem;color:#59607a;margin-top:6px}
+    .controls{display:flex;gap:10px;margin-top:12px}
+    button{padding:10px 14px;border-radius:10px;border:0;cursor:pointer;font-weight:600}
+    .btn-primary{background:#25D366;color:#003010}
+    .btn-ghost{background:#eef2fb;color:#10203a}
+    .btn-danger{background:#ffebe9;color:#7a1b1b}
+    .out{margin-top:14px;padding:12px;background:#fbfdff;border-radius:10px;border:1px solid #e8f0ff}
+    .links{margin-top:10px;display:flex;flex-direction:column;gap:8px}
+    a.link-item{padding:10px;border-radius:8px;background:#f6f8ff;border:1px solid #e6ecff;text-decoration:none;color:#0b2a66;word-break:break-all}
+    .small{font-size:.85rem;color:#556}
+    .warn{color:#8a1212;margin-top:10px}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>WhatsApp Multi-Link Builder — (Manual Send Only)</h1>
+    <p class="small">ඔබට message එකක් type කරලා, පහළට phone numbers හෝ group invite links පේස්ට් කරලා prefilled links generate කරගන්න පුලුවන්. හැම link එකක්ම ඔබයි click කරලා WhatsApp එකෙන් <strong>manual</strong> ලෙස Send කරන්න.</p>
 
+    <label for="msg">ඔබේ Message (auto-encode කරනවා)</label>
+    <textarea id="msg" placeholder="ඔබට යැවිය යුතු message එක මෙහි ලියන්න..."></textarea>
+
+    <label for="list">Phone numbers (one per line) OR Group invite links (one per line)</label>
+    <textarea id="list" placeholder="උදා: 
+94771234567
+94770011223
+https://chat.whatsapp.com/AbCdEfGhIjKlMn"></textarea>
+    <div class="hint">Phone numbers: රට කේතය + number (leading 0 නොදෙන්න). Group invite links: https://chat.whatsapp.com/xxxxxxxxxx</div>
+
+    <div class="controls">
+      <button class="btn-primary" id="genBtn">Generate Links</button>
+      <button class="btn-ghost" id="copyAllBtn">Copy All Links</button>
+      <button class="btn-danger" id="openAllBtn">Open All (Use responsibly)</button>
+    </div>
+
+    <div class="out" id="out" hidden>
+      <div class="small">Generated links (click to open):</div>
+      <div class="links" id="links"></div>
+    </div>
+
+    <div class="warn">
+      ⚠️ සටහන: මෙම මෙවලම <strong>manual sending</strong> සඳහායි. Unsolicited / bulk sending (opt-in නැති අය වෙත) WhatsApp නීතිවලට විරුද්ධ වන අතර account ban විය හැක. ඔබගේ පද්ධතියේ users/receivers වෙතින් අවසර (opt-in) තිබේදැයි වගබලා ගන්න.
+    </div>
+  </div>
+
+  <script>
+    const msgEl = document.getElementById('msg');
+    const listEl = document.getElementById('list');
+    const genBtn = document.getElementById('genBtn');
+    const linksDiv = document.getElementById('links');
+    const outBox = document.getElementById('out');
+    const copyAllBtn = document.getElementById('copyAllBtn');
+    const openAllBtn = document.getElementById('openAllBtn');
+
+    function sanitizeNumber(v){
+      return (v||'').replace(/\D+/g,''); // keep digits only
+    }
+
+    function isGroupLink(line){
+      return /chat\.whatsapp\.com\/[A-Za-z0-9_-]+/.test(line);
+    }
+
+    function buildChatLinkForNumber(num, msg){
+      if(!num) return '';
+      // ensure international format without leading zeros
+      if(num.startsWith('0')) num = num.replace(/^0+/, '');
+      return msg ? `https://wa.me/${num}?text=${encodeURIComponent(msg)}` : `https://wa.me/${num}`;
+    }
+
+    function buildGroupLink(inviteLink){
+      // invite link opens group invite — message cannot be auto-pushed into group inbox via invite link
+      return inviteLink.trim();
+    }
+
+    function generate(){
+      linksDiv.innerHTML = '';
+      const raw = listEl.value.split(/\r?\n/).map(l=>l.trim()).filter(Boolean);
+      const message = msgEl.value.trim();
+      if(raw.length===0){ alert('පළමුව numbers/links එකක් දාන්න.'); return; }
+
+      const out = [];
+      raw.forEach(item=>{
+        if(isGroupLink(item)){
+          const gl = buildGroupLink(item);
+          const a = document.createElement('a');
+          a.href = gl;
+          a.target = '_blank';
+          a.rel = 'noopener';
+          a.className = 'link-item';
+          a.textContent = `Group Invite: ${gl}`;
+          linksDiv.appendChild(a);
+          out.push(gl);
+        } else {
+          const digits = sanitizeNumber(item);
+          if(digits.length<6){
+            const span = document.createElement('div');
+            span.className = 'link-item';
+            span.textContent = `Invalid number: ${item}`;
+            linksDiv.appendChild(span);
+            return;
+          }
+          const link = buildChatLinkForNumber(digits, message);
+          const a = document.createElement('a');
+          a.href = link;
+          a.target = '_blank';
+          a.rel = 'noopener';
+          a.className = 'link-item';
+          a.textContent = `${digits} → ${link}`;
+          linksDiv.appendChild(a);
+          out.push(link);
+        }
+      });
+
+      outBox.hidden = false;
+      // store last generated for copy/open
+      outBox.dataset.links = JSON.stringify(out);
+    }
+
+    genBtn.addEventListener('click', generate);
+
+    copyAllBtn.addEventListener('click', async ()=>{
+      const data = outBox.dataset.links ? JSON.parse(outBox.dataset.links) : [];
+      if(!data.length){ alert('පළමුව Generate Links ක්ලික් කරන්න.'); return; }
+      try {
+        await navigator.clipboard.writeText(data.join('\n'));
+        alert('සියලුම links clipboard එකට copy කරන ලදි ✅');
+      } catch {
+        alert('Clipboard access නොලැබුණා — පහත links copy කරන්න.');
+      }
+    });
+
+    openAllBtn.addEventListener('click', ()=>{
+      const data = outBox.dataset.links ? JSON.parse(outBox.dataset.links) : [];
+      if(!data.length){ alert('පළමුව Generate Links ක්ලික් කරන්න.'); return; }
+      if(!confirm('Open all links in new tabs? This will open multiple tabs/windows. Use responsibly.')) return;
+      data.forEach(l=>{
+        // open only if starts with http
+        if(/^https?:\/\//i.test(l)) window.open(l, '_blank', 'noopener');
+      });
+    });
+  </script>
+</body>
+  </html>
