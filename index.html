@@ -2,35 +2,39 @@
 <html lang="si">
 <head>
   <meta charset="UTF-8">
-  <title>AI Voice Reply Demo</title>
+  <title>Auto AI Voice Reply</title>
 </head>
 <body>
-  <h2>AI Voice Reply System</h2>
-  
-  <textarea id="text" rows="4" cols="40" placeholder="ඔයාට කියවන්න ඕනි text එක ලියන්න..."></textarea><br><br>
-  <button onclick="speak()">🔊 Voice Reply</button>
-  <button onclick="listen()">🎤 Record & Convert</button>
-  
-  <p id="output"></p>
+  <h2>AI Voice Auto Play</h2>
 
   <script>
-    // Text → Voice
-    function speak() {
-      let text = document.getElementById("text").value;
-      let speech = new SpeechSynthesisUtterance(text);
-      speech.lang = "si-LK"; // Sinhala support
-      window.speechSynthesis.speak(speech);
+    let speaking = true;
+
+    // මෙතන ඔයාගේ කියවන්න ඕනි text එක දාන්න
+    let text = "හෙලෝ! මම AI වොයිස්. ඔයා මේ වෙබ් පිටුවෙන් පිටවෙන තුරු මම කියවන්න නවත්වන්නේ නැහැ.";
+
+    function speakLoop() {
+      if (!speaking) return;
+      let utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = "si-LK"; // Sinhala voice
+      utterance.onend = function() {
+        if (speaking) {
+          speakLoop(); // නැවතුනත් නැවත කියවන්න loop වෙයි
+        }
+      };
+      window.speechSynthesis.speak(utterance);
     }
 
-    // Voice → Text
-    function listen() {
-      let recognition = new(window.SpeechRecognition || window.webkitSpeechRecognition)();
-      recognition.lang = "si-LK"; // Sinhala
-      recognition.onresult = function(event) {
-        document.getElementById("output").innerText = event.results[0][0].transcript;
-      }
-      recognition.start();
-    }
+    // Page load වෙන්න ගමන්ම voice start වෙනවා
+    window.onload = function() {
+      speakLoop();
+    };
+
+    // Website එකෙන් යනකොට voice stop වෙනවා
+    window.onbeforeunload = function() {
+      speaking = false;
+      window.speechSynthesis.cancel();
+    };
   </script>
 </body>
 </html>
